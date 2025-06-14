@@ -1,37 +1,51 @@
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useState } from "react";
 
-export interface BookingPayload {
+export interface BookingForm {
   name: string;
-  phone: string;
-  services: string;
-  appointment: string;
+  email: string;
+  date: string;
+  services: string[];
 }
 
-export const useBooking = () => {
+export function useBooking(initial?: Partial<BookingForm>) {
+  const [form, setForm] = useState<BookingForm>({
+    name: initial?.name || "",
+    email: initial?.email || "",
+    date: initial?.date || "",
+    services: initial?.services || [],
+  });
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
-  const submitBooking = async (booking: BookingPayload) => {
+  const handleChange = (field: keyof BookingForm, value: string | string[]) => {
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const submitBooking = async (onSubmit: (data: BookingForm) => Promise<any>) => {
     setLoading(true);
-    setMessage(null);
-
+    setError(null);
+    setSuccess(false);
     try {
-      const { error } = await supabase.from('bookings').insert([booking]);
-
-      if (error) {
-        console.error('Error saving booking:', error);
-        setMessage('Failed to save booking. Please try again.');
-      } else {
-        setMessage('Your appointment has been booked successfully!');
-      }
-    } catch (err) {
-      console.error('Unexpected error:', err);
-      setMessage('Something went wrong.');
+      await onSubmit(form);
+      setSuccess(true);
+    } catch (err: any) {
+      setError(err?.message || "Booking failed");
     } finally {
       setLoading(false);
     }
   };
 
-  return { submitBooking, loading, message };
-};
+  return {
+    form,
+    setForm,
+    handleChange,
+    submitBooking,
+    loading,
+    error,
+    success,
+  };
+}
